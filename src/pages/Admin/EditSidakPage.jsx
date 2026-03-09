@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Save, CheckCheck, CheckCircle2, Building2, User, Calendar } from 'lucide-react'
 import { getSidakById, updateSidak } from '../../services/sidakService'
 import { getAspek, getAllSubAspekByAspek } from '../../services/aspekService'
@@ -10,6 +10,8 @@ import toast from 'react-hot-toast'
 export default function EditSidakPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const location = useLocation()
+    const isAdmin = location.pathname.startsWith('/admin')
 
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
@@ -54,7 +56,8 @@ export default function EditSidakPage() {
                     keterangan: existing?.keterangan ?? '',
                     bobot_sub_aspek: sa.bobot_sub_aspek,
                     nama_sub_aspek: sa.nama_sub_aspek,
-                    nilai: existing?.nilai ?? 0
+                    nilai: existing?.nilai ?? 0,
+                    is_unit_required: !!sa.is_unit_required
                 }
             })
 
@@ -103,11 +106,22 @@ export default function EditSidakPage() {
             return
         }
 
+        // Validation: check for required units conditionally
+        const missingUnits = details.filter(d =>
+            d.is_unit_required &&
+            d.kelengkapan === 'Sesuai' &&
+            (!d.jumlah_unit || Number(d.jumlah_unit) <= 0)
+        )
+        if (missingUnits.length > 0) {
+            const names = missingUnits.map(m => m.nama_sub_aspek).join(', ')
+            return toast.error(`Jumlah unit wajib diisi untuk item yang 'Sesuai': ${names}`, { duration: 5000 })
+        }
+
         setSubmitting(true)
         try {
             await updateSidak(id, { identity, details })
             toast.success('Laporan SIDAK berhasil diperbarui!')
-            navigate('/admin/results')
+            navigate(isAdmin ? '/admin/results' : '/')
         } catch (err) {
             toast.error('Gagal memperbarui: ' + err.message)
         } finally {
@@ -121,7 +135,7 @@ export default function EditSidakPage() {
         <div className="max-w-4xl mx-auto space-y-6">
             {/* Header */}
             <div className="flex items-center gap-3 sm:gap-4">
-                <button onClick={() => navigate('/admin/results')} className="btn-secondary px-2 sm:px-4">
+                <button onClick={() => navigate(isAdmin ? '/admin/results' : '/')} className="btn-secondary px-2 sm:px-4">
                     <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div>
@@ -178,25 +192,27 @@ export default function EditSidakPage() {
                 </div>
 
                 {/* Score Summary Banner */}
-                <div className={`rounded-xl border p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm transition-all ${status === 'Comply' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-red-600 border-red-500 text-white'
-                    }`}>
-                    <div className="flex items-center gap-4 w-full sm:w-auto">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                            <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7" />
+                {isAdmin && (
+                    <div className={`rounded-xl border p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm transition-all ${status === 'Comply' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-red-600 border-red-500 text-white'
+                        }`}>
+                        <div className="flex items-center gap-4 w-full sm:w-auto">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                                <CheckCircle2 className="w-6 h-6 sm:w-7 sm:h-7" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] sm:text-xs font-medium opacity-80 uppercase tracking-wider">Total Skor Akhir</p>
+                                <p className="text-3xl sm:text-4xl font-black">{totalNilai.toFixed(2)}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-[10px] sm:text-xs font-medium opacity-80 uppercase tracking-wider">Total Skor Akhir</p>
-                            <p className="text-3xl sm:text-4xl font-black">{totalNilai.toFixed(2)}</p>
+                        <div className="text-center sm:text-right w-full sm:w-auto">
+                            <p className="text-[10px] sm:text-xs opacity-80 mb-1 uppercase tracking-wider">Status Kelulusan</p>
+                            <div className="flex items-center justify-center sm:justify-end gap-2 bg-white/20 px-4 py-1.5 rounded-full">
+                                <span className="text-base sm:text-lg font-bold">{status === 'Comply' ? 'LULUS' : 'TIDAK LULUS'}</span>
+                            </div>
+                            <p className="text-[10px] opacity-60 mt-1.5 italic">*Batas minimum 80.00</p>
                         </div>
                     </div>
-                    <div className="text-center sm:text-right w-full sm:w-auto">
-                        <p className="text-[10px] sm:text-xs opacity-80 mb-1 uppercase tracking-wider">Status Kelulusan</p>
-                        <div className="flex items-center justify-center sm:justify-end gap-2 bg-white/20 px-4 py-1.5 rounded-full">
-                            <span className="text-base sm:text-lg font-bold">{status === 'Comply' ? 'LULUS' : 'TIDAK LULUS'}</span>
-                        </div>
-                        <p className="text-[10px] opacity-60 mt-1.5 italic">*Batas minimum 80.00</p>
-                    </div>
-                </div>
+                )}
 
 
                 {/* Checklist Sections */}
@@ -213,16 +229,20 @@ export default function EditSidakPage() {
                                     <div className="w-1.5 h-8 bg-brand-600 rounded-full" />
                                     <div>
                                         <h3 className="font-bold text-gray-900 text-sm sm:text-base">{aspek.nama_aspek}</h3>
-                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                                            Bobot: {Number(aspek.bobot_aspek).toFixed(2)}%
-                                        </p>
+                                        {isAdmin && (
+                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                                Bobot: {Number(aspek.bobot_aspek).toFixed(2)}%
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex items-center justify-between sm:justify-end gap-4">
-                                    <div className="text-left sm:text-right">
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Capaian</p>
-                                        <p className="text-xl sm:text-2xl font-black text-brand-600">{nilaiAspek.toFixed(2)}</p>
-                                    </div>
+                                    {isAdmin && (
+                                        <div className="text-left sm:text-right">
+                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Capaian</p>
+                                            <p className="text-xl sm:text-2xl font-black text-brand-600">{nilaiAspek.toFixed(2)}</p>
+                                        </div>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={() => setAllSesuai(aspek.id)}
@@ -244,7 +264,7 @@ export default function EditSidakPage() {
                                             <th className="table-th py-3 w-32 sm:w-40 text-center">Hasil</th>
                                             <th className="table-th py-3 w-20 sm:w-24 text-center hidden md:table-cell">Unit</th>
                                             <th className="table-th py-3 hidden lg:table-cell">Keterangan</th>
-                                            <th className="table-th py-3 w-16 sm:w-20 text-center">Nilai</th>
+                                            {isAdmin && <th className="table-th py-3 w-16 sm:w-20 text-center">Nilai</th>}
                                         </tr>
                                     </thead>
 
@@ -268,7 +288,10 @@ export default function EditSidakPage() {
                                                         type="number"
                                                         value={d.jumlah_unit || ''}
                                                         onChange={(e) => updateDetail(d.sub_aspek_id, 'jumlah_unit', e.target.value)}
-                                                        className="w-16 px-2 py-1.5 text-center border border-gray-200 rounded-lg text-xs focus:ring-2 focus:ring-brand-500 outline-none"
+                                                        className={`w-16 px-2 py-1.5 text-center border rounded-lg text-xs focus:ring-2 focus:ring-brand-500 outline-none transition-all ${d.is_unit_required && (!d.jumlah_unit || Number(d.jumlah_unit) <= 0)
+                                                            ? 'border-amber-400 bg-amber-50/30'
+                                                            : 'border-gray-200'
+                                                            }`}
                                                         placeholder="0"
                                                     />
                                                 </td>
@@ -281,10 +304,11 @@ export default function EditSidakPage() {
                                                         placeholder="Catatan..."
                                                     />
                                                 </td>
-
-                                                <td className="table-td py-3 text-center font-black text-brand-600">
-                                                    {d.nilai.toFixed(2)}
-                                                </td>
+                                                {isAdmin && (
+                                                    <td className="table-td py-3 text-center font-black text-brand-600">
+                                                        {d.nilai.toFixed(2)}
+                                                    </td>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -296,7 +320,7 @@ export default function EditSidakPage() {
 
                 {/* Footer Actions */}
                 <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-4 pt-4 pb-12">
-                    <button type="button" onClick={() => navigate('/admin/results')} className="btn-secondary w-full sm:w-auto px-8 justify-center">
+                    <button type="button" onClick={() => navigate(isAdmin ? '/admin/results' : '/')} className="btn-secondary w-full sm:w-auto px-8 justify-center">
                         Batal
                     </button>
                     <button type="submit" disabled={submitting} className="btn-primary w-full sm:w-auto px-12 py-3 text-sm sm:text-base shadow-lg shadow-brand-200 justify-center">

@@ -45,6 +45,7 @@ export default function App() {
           <Route path="/" element={<PublicLayout><Dashboard /></PublicLayout>} />
           <Route path="/input-sidak" element={<PublicLayout><InputSidak /></PublicLayout>} />
           <Route path="/checklist" element={<PublicLayout><Checklist /></PublicLayout>} />
+          <Route path="/edit-sidak/:id" element={<PublicLayout><EditSidakPage /></PublicLayout>} />
 
           {/* Admin login (no guard needed) */}
           <Route path="/admin/login" element={<AdminLogin />} />

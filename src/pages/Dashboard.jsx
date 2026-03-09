@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Plus, Download, CheckCircle2, XCircle, ClipboardList, TrendingUp, AlertTriangle, Search } from 'lucide-react'
+import { Plus, Download, CheckCircle2, XCircle, ClipboardList, TrendingUp, AlertTriangle, Search, Pencil } from 'lucide-react'
 import { getSidakList } from '../services/sidakService'
 import { getLatestTemplate } from '../services/templateService'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -131,6 +131,7 @@ export default function Dashboard() {
                                     <th className="table-th text-left">Nama RO</th>
                                     <th className="table-th text-left">Nama KL</th>
                                     <th className="table-th text-left">Tanggal Kunjungan</th>
+                                    <th className="table-th text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -152,6 +153,15 @@ export default function Dashboard() {
                                                     month: 'long',
                                                     year: 'numeric',
                                                 })}
+                                            </td>
+                                            <td className="table-td text-center">
+                                                <Link
+                                                    to={`/edit-sidak/${sidak.id}`}
+                                                    className="inline-flex items-center gap-1.5 text-brand-600 hover:text-brand-700 font-bold"
+                                                >
+                                                    <Pencil className="w-3.5 h-3.5" />
+                                                    Edit
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))
