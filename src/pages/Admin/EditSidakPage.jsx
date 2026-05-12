@@ -1,11 +1,33 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Save, CheckCheck, CheckCircle2, Building2, User, Calendar } from 'lucide-react'
+import { ArrowLeft, Save, CheckCheck, CheckCircle2, Building2, User, Calendar, Plus, X, Eraser, Edit3 } from 'lucide-react'
+import SignatureCanvas from 'react-signature-canvas'
 import { getSidakById, updateSidak } from '../../services/sidakService'
 import { getAspek, getAllSubAspekByAspek } from '../../services/aspekService'
 import { calcNilaiSubAspek, calcNilaiAspek, calcTotalNilai, determineStatus } from '../../utils/calculateScore'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import toast from 'react-hot-toast'
+
+const RO_OPTIONS = [
+    "RO 1/Medan",
+    "RO 2/ Pekanbaru",
+    "RO 3/Padang",
+    "RO 4/Palembang",
+    "RO 5/ Bandar Lampung",
+    "RO 6/ Jakarta 1",
+    "RO 7/ Jakarta 2",
+    "RO 8/ Jakarta 3",
+    "RO 9/Bandung",
+    "RO 10/Semarang",
+    "RO 11/Yogyakarta",
+    "RO 12/Surabaya",
+    "RO 13/Malang",
+    "RO 14/Banjarmasin",
+    "RO 15/Makassar",
+    "RO 16/Manado",
+    "RO 17/Denpasar",
+    "RO 18/Jayapura"
+];
 
 export default function EditSidakPage() {
     const { id } = useParams()
@@ -22,9 +44,14 @@ export default function EditSidakPage() {
     const [identity, setIdentity] = useState({
         nama_ro: '',
         nama_kl: '',
-        tanggal_kunjungan: ''
+        vendor: '',
+        tanggal_kunjungan: '',
+        tim_kunjungan: [''],
+        ttd_kepala_kl: ''
     })
     const [details, setDetails] = useState([])
+    const [showCanvas, setShowCanvas] = useState(false)
+    const sigCanvas = useRef({})
 
     useEffect(() => {
         loadData()
@@ -42,8 +69,15 @@ export default function EditSidakPage() {
             setIdentity({
                 nama_ro: sidak.nama_ro,
                 nama_kl: sidak.nama_kl,
-                tanggal_kunjungan: sidak.tanggal_kunjungan
+                vendor: sidak.vendor || '',
+                tanggal_kunjungan: sidak.tanggal_kunjungan,
+                tim_kunjungan: sidak.tim_kunjungan ? sidak.tim_kunjungan.split(', ') : [''],
+                ttd_kepala_kl: sidak.ttd_kepala_kl || ''
             })
+
+            if (!sidak.ttd_kepala_kl) {
+                setShowCanvas(true)
+            }
 
             // Map existing details, ensuring we have all sub_aspek even if missing in previous save
             const rows = subAspek.map(sa => {
@@ -96,6 +130,27 @@ export default function EditSidakPage() {
         toast.success('Semua item di aspek ini diatur ke Sesuai')
     }
 
+    function updateTim(index, value) {
+        setIdentity(prev => {
+            const newTim = [...prev.tim_kunjungan];
+            newTim[index] = value;
+            return { ...prev, tim_kunjungan: newTim };
+        });
+    }
+
+    function addTim() {
+        if (identity.tim_kunjungan.length < 5) {
+            setIdentity(prev => ({ ...prev, tim_kunjungan: [...prev.tim_kunjungan, ''] }));
+        }
+    }
+
+    function removeTim(index) {
+        setIdentity(prev => {
+            const newTim = prev.tim_kunjungan.filter((_, i) => i !== index);
+            return { ...prev, tim_kunjungan: newTim.length > 0 ? newTim : [''] };
+        });
+    }
+
     const totalNilai = calcTotalNilai(details)
     const status = determineStatus(totalNilai)
 
@@ -106,24 +161,55 @@ export default function EditSidakPage() {
             return
         }
 
-        // Validation: check for required units conditionally
-        const missingUnits = details.filter(d =>
-            d.is_unit_required &&
-            d.kelengkapan === 'Sesuai' &&
-            (!d.jumlah_unit || Number(d.jumlah_unit) <= 0)
-        )
-        if (missingUnits.length > 0) {
-            const names = missingUnits.map(m => m.nama_sub_aspek).join(', ')
-            return toast.error(`Jumlah unit wajib diisi untuk item yang 'Sesuai': ${names}`, { duration: 5000 })
-        }
-
         setSubmitting(true)
+
         try {
-            await updateSidak(id, { identity, details })
+            // Validation: tim_kunjungan
+            const timArray = identity.tim_kunjungan.map(t => t.trim()).filter(t => t !== '');
+            if (timArray.length === 0) {
+                toast.error('Minimal 1 anggota tim kunjungan wajib diisi')
+                setSubmitting(false)
+                return
+            }
+
+            // Validation: check for required units conditionally
+            const missingUnits = details.filter(d =>
+                d.is_unit_required &&
+                d.kelengkapan === 'Sesuai' &&
+                (!d.jumlah_unit || Number(d.jumlah_unit) <= 0)
+            )
+            if (missingUnits.length > 0) {
+                const names = missingUnits.map(m => m.nama_sub_aspek).join(', ')
+                toast.error(`Jumlah unit wajib diisi untuk item yang 'Sesuai': ${names}`, { duration: 5000 })
+                setSubmitting(false)
+                return
+            }
+
+            // Validation: Signature
+            let finalTtd = identity.ttd_kepala_kl;
+            if (showCanvas) {
+                if (!sigCanvas.current || typeof sigCanvas.current.isEmpty !== 'function') {
+                    throw new Error('Canvas tanda tangan tidak terinisialisasi dengan baik')
+                }
+                if (sigCanvas.current.isEmpty()) {
+                    toast.error('Tanda Tangan Kepala Kantor Layanan wajib diisi');
+                    setSubmitting(false)
+                    return;
+                }
+                finalTtd = sigCanvas.current.getCanvas().toDataURL('image/png');
+            }
+
+            const payloadIdentity = {
+                ...identity,
+                tim_kunjungan: timArray.join(', '),
+                ttd_kepala_kl: finalTtd
+            };
+            await updateSidak(id, { identity: payloadIdentity, details })
             toast.success('Laporan SIDAK berhasil diperbarui!')
             navigate(isAdmin ? '/admin/results' : '/')
         } catch (err) {
-            toast.error('Gagal memperbarui: ' + err.message)
+            console.error('Submit Error:', err)
+            toast.error('Gagal memperbarui: ' + (err.message || 'Terjadi kesalahan sistem'))
         } finally {
             setSubmitting(false)
         }
@@ -147,47 +233,119 @@ export default function EditSidakPage() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Identity Section */}
-                <div className="card grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                        <label className="form-label mb-1.5 flex items-center gap-2">
-                            <User className="w-3.5 h-3.5 text-gray-400" />
-                            Regional Office
-                        </label>
-                        <input
-                            type="text"
-                            value={identity.nama_ro}
-                            onChange={e => setIdentity({ ...identity, nama_ro: e.target.value })}
-                            className="form-input"
-                            placeholder="Contoh: RO Jakarta"
-                            required
-                        />
+                <div className="card space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div>
+                            <label className="form-label mb-1.5 flex items-center gap-2">
+                                <User className="w-3.5 h-3.5 text-gray-400" />
+                                Regional Office
+                            </label>
+                            <select
+                                value={identity.nama_ro}
+                                onChange={e => setIdentity({ ...identity, nama_ro: e.target.value })}
+                                className="form-input"
+                                required
+                            >
+                                <option value="">Pilih Regional Office</option>
+                                {RO_OPTIONS.map((ro) => (
+                                    <option key={ro} value={ro}>{ro}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="form-label mb-1.5 flex items-center gap-2">
+                                <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                                Kantor Layanan
+                            </label>
+                            <input
+                                type="text"
+                                value={identity.nama_kl}
+                                onChange={e => setIdentity({ ...identity, nama_kl: e.target.value })}
+                                className="form-input"
+                                placeholder="Contoh: KL Sudirman"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="form-label mb-1.5 flex items-center gap-2">
+                                <User className="w-3.5 h-3.5 text-gray-400" />
+                                Vendor Pelaksana
+                            </label>
+                            <select
+                                value={identity.vendor}
+                                onChange={e => setIdentity({ ...identity, vendor: e.target.value })}
+                                className="form-input"
+                                required
+                            >
+                                <option value="">Pilih Vendor</option>
+                                <option value="BGI">BGI</option>
+                                <option value="Advantage">Advantage</option>
+                                <option value="SSI">SSI</option>
+                                <option value="Kejar">Kejar</option>
+                                <option value="TAG">TAG</option>
+                                <option value="UG">UG</option>
+                                <option value="Lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="form-label mb-1.5 flex items-center gap-2">
+                                <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                                Tanggal Kunjungan
+                            </label>
+                            <input
+                                type="date"
+                                value={identity.tanggal_kunjungan}
+                                onChange={e => setIdentity({ ...identity, tanggal_kunjungan: e.target.value })}
+                                className="form-input"
+                                required
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <label className="form-label mb-1.5 flex items-center gap-2">
-                            <Building2 className="w-3.5 h-3.5 text-gray-400" />
-                            Kantor Layanan
+                    
+                    {/* Tim Kunjungan */}
+                    <div className="pt-2 border-t border-gray-100">
+                        <label className="form-label mb-3 flex items-center justify-between">
+                            <span className="flex items-center gap-2">
+                                <User className="w-3.5 h-3.5 text-gray-400" />
+                                Tim Kunjungan
+                            </span>
+                            <span className="text-xs font-normal text-gray-500">{identity.tim_kunjungan.length}/5 orang</span>
                         </label>
-                        <input
-                            type="text"
-                            value={identity.nama_kl}
-                            onChange={e => setIdentity({ ...identity, nama_kl: e.target.value })}
-                            className="form-input"
-                            placeholder="Contoh: KL Sudirman"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label className="form-label mb-1.5 flex items-center gap-2">
-                            <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                            Tanggal Kunjungan
-                        </label>
-                        <input
-                            type="date"
-                            value={identity.tanggal_kunjungan}
-                            onChange={e => setIdentity({ ...identity, tanggal_kunjungan: e.target.value })}
-                            className="form-input"
-                            required
-                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {identity.tim_kunjungan.map((tim, index) => (
+                                <div key={index} className="flex gap-2">
+                                    <div className="flex-grow">
+                                        <input
+                                            type="text"
+                                            value={tim}
+                                            onChange={e => updateTim(index, e.target.value)}
+                                            className="form-input"
+                                            placeholder={`Anggota Tim ${index + 1}`}
+                                            required={index === 0}
+                                        />
+                                    </div>
+                                    {identity.tim_kunjungan.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => removeTim(index)}
+                                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center border border-transparent hover:border-red-100"
+                                            title="Hapus"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            {identity.tim_kunjungan.length < 5 && (
+                                <button
+                                    type="button"
+                                    onClick={addTim}
+                                    className="flex items-center justify-center gap-2 h-[42px] border-2 border-dashed border-gray-200 rounded-lg text-sm font-semibold text-gray-500 hover:text-brand-600 hover:border-brand-300 hover:bg-brand-50 transition-colors"
+                                >
+                                    <Plus className="w-4 h-4" /> Tambah
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -222,15 +380,15 @@ export default function EditSidakPage() {
                     const nilaiAspek = calcNilaiAspek(details, aspek.id)
 
                     return (
-                        <div key={aspek.id} className="card p-0 overflow-hidden border-2 border-gray-100">
+                        <div key={aspek.id} className="card p-0 overflow-hidden border-2 border-red-100">
                             {/* Aspek Header */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 bg-gray-50 border-b gap-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 sm:px-6 py-4 bg-red-900 border-b border-red-800 gap-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-8 bg-brand-600 rounded-full" />
+                                    <div className="w-1.5 h-8 bg-white/30 rounded-full" />
                                     <div>
-                                        <h3 className="font-bold text-gray-900 text-sm sm:text-base">{aspek.nama_aspek}</h3>
+                                        <h3 className="font-bold text-white text-sm sm:text-base">{aspek.nama_aspek}</h3>
                                         {isAdmin && (
-                                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+                                            <p className="text-[10px] text-white/70 font-bold uppercase tracking-widest">
                                                 Bobot: {Number(aspek.bobot_aspek).toFixed(2)}%
                                             </p>
                                         )}
@@ -239,14 +397,14 @@ export default function EditSidakPage() {
                                 <div className="flex items-center justify-between sm:justify-end gap-4">
                                     {isAdmin && (
                                         <div className="text-left sm:text-right">
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Capaian</p>
-                                            <p className="text-xl sm:text-2xl font-black text-brand-600">{nilaiAspek.toFixed(2)}</p>
+                                            <p className="text-[10px] text-white/60 font-bold uppercase tracking-tight">Capaian</p>
+                                            <p className="text-xl sm:text-2xl font-black text-white">{nilaiAspek.toFixed(2)}</p>
                                         </div>
                                     )}
                                     <button
                                         type="button"
                                         onClick={() => setAllSesuai(aspek.id)}
-                                        className="btn-secondary bg-white text-[10px] sm:text-xs py-1.5 border-gray-200"
+                                        className="btn-secondary bg-white/10 hover:bg-white/20 text-white text-[10px] sm:text-xs py-1.5 border-white/20"
                                     >
                                         <CheckCheck className="w-3.5 h-3.5" />
                                         Auto Sesuai
@@ -317,6 +475,63 @@ export default function EditSidakPage() {
                         </div>
                     )
                 })}
+
+                {/* Signature Pad Section */}
+                <div className="card space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="font-bold text-gray-900">Tanda Tangan Kepala Kantor Layanan <span className="text-red-500">*</span></h3>
+                            <p className="text-xs text-gray-500 mt-1">Harap tanda tangan di dalam kotak di bawah ini sebelum menyimpan perubahan.</p>
+                        </div>
+                        {!showCanvas && (
+                            <button 
+                                type="button" 
+                                onClick={() => setShowCanvas(true)}
+                                className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-brand-50 transition-colors"
+                            >
+                                <Edit3 className="w-4 h-4" />
+                                Ganti Tanda Tangan
+                            </button>
+                        )}
+                    </div>
+
+                    {!showCanvas && identity.ttd_kepala_kl ? (
+                        <div className="border-2 border-gray-200 rounded-xl bg-gray-50 flex items-center justify-center p-4 w-full h-48 overflow-hidden">
+                            <img src={identity.ttd_kepala_kl} alt="Tanda Tangan Saat Ini" className="max-w-full max-h-full object-contain mix-blend-multiply" />
+                        </div>
+                    ) : (
+                        <>
+                            <div className="border-2 border-dashed border-brand-300 rounded-xl overflow-hidden bg-white hover:border-brand-400 transition-colors shadow-inner">
+                                <SignatureCanvas 
+                                    ref={sigCanvas}
+                                    penColor="black"
+                                    canvasProps={{
+                                        className: 'w-full h-48 cursor-crosshair touch-none'
+                                    }}
+                                />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                {identity.ttd_kepala_kl && (
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setShowCanvas(false)}
+                                        className="text-xs font-semibold text-gray-500 hover:text-gray-700 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+                                    >
+                                        Batal Ganti
+                                    </button>
+                                )}
+                                <button 
+                                    type="button" 
+                                    onClick={() => sigCanvas.current.clear()}
+                                    className="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-amber-50 transition-colors"
+                                >
+                                    <Eraser className="w-4 h-4" />
+                                    Hapus Tanda Tangan
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
 
                 {/* Footer Actions */}
                 <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-4 pt-4 pb-12">

@@ -153,9 +153,31 @@ export default function SubAspekPage() {
                             .reduce((s, sa) => s + Number(sa.bobot_sub_aspek), 0)
                         const over = sum > Number(a.bobot_aspek)
                         return (
-                            <div key={a.id} className={`rounded-xl border p-3 text-sm ${over ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'}`}>
-                                <p className="font-medium text-gray-700 truncate">{a.nama_aspek}</p>
-                                <p className={`text-xs mt-1 ${over ? 'text-red-600' : 'text-gray-500'}`}>
+                            <div 
+                                key={a.id} 
+                                onClick={() => setFilterAspek(filterAspek === a.id ? 'all' : a.id)}
+                                className={`rounded-xl border p-3 text-sm cursor-pointer transition-all ${
+                                    filterAspek === a.id
+                                        ? over 
+                                            ? 'ring-2 ring-red-500 border-red-500 bg-red-50' 
+                                            : 'ring-2 ring-brand-500 border-brand-500 bg-brand-50'
+                                        : over 
+                                            ? 'border-red-300 bg-red-50 hover:bg-red-100' 
+                                            : 'border-gray-200 bg-white hover:bg-gray-50'
+                                }`}
+                            >
+                                <p className={`font-medium truncate ${
+                                    filterAspek === a.id 
+                                        ? over ? 'text-red-800' : 'text-brand-800' 
+                                        : 'text-gray-700'
+                                }`}>
+                                    {a.nama_aspek}
+                                </p>
+                                <p className={`text-xs mt-1 ${
+                                    over 
+                                        ? filterAspek === a.id ? 'text-red-700 font-medium' : 'text-red-600' 
+                                        : filterAspek === a.id ? 'text-brand-600 font-medium' : 'text-gray-500'
+                                }`}>
                                     {sum.toFixed(2)} / {Number(a.bobot_aspek).toFixed(2)}%
                                 </p>
                             </div>

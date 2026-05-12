@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, ArrowLeft, Save, CheckCheck } from 'lucide-react'
+import { CheckCircle2, ArrowLeft, Save, CheckCheck, Eraser } from 'lucide-react'
+import SignatureCanvas from 'react-signature-canvas'
 import { getAspek, getAllSubAspekByAspek } from '../services/aspekService'
 import { createSidak } from '../services/sidakService'
 import useSidakStore from '../store/useSidakStore'
@@ -17,7 +18,8 @@ export default function Checklist() {
     const [details, setDetails] = useState([]) // array of { sub_aspek_id, aspek_id, jumlah_unit, keterangan, nilai, bobot_sub_aspek }
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
-
+    const sigCanvas = useRef({})
+    
     // Guard: if no identity, redirect back
     useEffect(() => {
         if (!identity.nama_ro) {
@@ -83,26 +85,46 @@ export default function Checklist() {
 
     async function handleSubmit(e) {
         e.preventDefault()
-
-        // Validation: check for required units conditionally
-        const missingUnits = details.filter(d =>
-            d.is_unit_required &&
-            d.kelengkapan === 'Sesuai' &&
-            (!d.jumlah_unit || Number(d.jumlah_unit) <= 0)
-        )
-        if (missingUnits.length > 0) {
-            const names = missingUnits.map(m => m.nama_sub_aspek).join(', ')
-            return toast.error(`Jumlah unit wajib diisi untuk item yang 'Sesuai': ${names}`, { duration: 5000 })
-        }
-
         setSubmitting(true)
+        
         try {
-            await createSidak({ identity, details })
+            // Validation: check for required units conditionally
+            const missingUnits = details.filter(d =>
+                d.is_unit_required &&
+                d.kelengkapan === 'Sesuai' &&
+                (!d.jumlah_unit || Number(d.jumlah_unit) <= 0)
+            )
+            if (missingUnits.length > 0) {
+                const names = missingUnits.map(m => m.nama_sub_aspek).join(', ')
+                toast.error(`Jumlah unit wajib diisi untuk item yang 'Sesuai': ${names}`, { duration: 5000 })
+                setSubmitting(false)
+                return
+            }
+
+            if (!sigCanvas.current || typeof sigCanvas.current.isEmpty !== 'function') {
+                throw new Error('Canvas tanda tangan tidak terinisialisasi dengan baik')
+            }
+
+            if (sigCanvas.current.isEmpty()) {
+                toast.error('Tanda Tangan Kepala Kantor Layanan wajib diisi')
+                setSubmitting(false)
+                return
+            }
+
+            const ttdBase64 = sigCanvas.current.getCanvas().toDataURL('image/png')
+            
+            const payloadIdentity = {
+                ...identity,
+                ttd_kepala_kl: ttdBase64
+            }
+
+            await createSidak({ identity: payloadIdentity, details })
             toast.success('SIDAK berhasil disimpan!')
             resetIdentity()
             navigate('/')
         } catch (err) {
-            toast.error('Gagal menyimpan: ' + err.message)
+            console.error('Submit Error:', err)
+            toast.error('Gagal menyimpan: ' + (err.message || 'Terjadi kesalahan sistem'))
         } finally {
             setSubmitting(false)
         }
@@ -153,7 +175,7 @@ export default function Checklist() {
                     return (
                         <div key={aspek.id} className="card p-0 overflow-hidden">
                             {/* Aspek Header */}
-                            <div className="flex items-center justify-between px-6 py-3.5 bg-brand-600">
+                            <div className="flex items-center justify-between px-6 py-3.5 bg-red-900">
                                 <div className="flex items-center gap-3">
                                     <span className="text-white font-semibold text-sm">{aspek.nama_aspek}</span>
                                 </div>
@@ -235,6 +257,33 @@ export default function Checklist() {
                         </div>
                     )
                 })}
+
+                {/* Signature Pad Section */}
+                <div className="card space-y-4">
+                    <div>
+                        <h3 className="font-bold text-gray-900">Tanda Tangan Kepala Kantor Layanan <span className="text-red-500">*</span></h3>
+                        <p className="text-xs text-gray-500 mt-1">Harap tanda tangan di dalam kotak di bawah ini sebelum menyimpan laporan.</p>
+                    </div>
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-white hover:border-brand-300 transition-colors">
+                        <SignatureCanvas 
+                            ref={sigCanvas}
+                            penColor="black"
+                            canvasProps={{
+                                className: 'w-full h-48 cursor-crosshair touch-none'
+                            }}
+                        />
+                    </div>
+                    <div className="flex justify-end">
+                        <button 
+                            type="button" 
+                            onClick={() => sigCanvas.current.clear()}
+                            className="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-amber-50 transition-colors"
+                        >
+                            <Eraser className="w-4 h-4" />
+                            Hapus Tanda Tangan
+                        </button>
+                    </div>
+                </div>
 
                 {/* Submit Button */}
                 <div className="flex justify-end gap-3 pb-8">

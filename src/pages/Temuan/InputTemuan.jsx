@@ -1,19 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Building2, Calendar, MapPin, User, ArrowRight, ArrowLeft, Plus, X, ClipboardCheck } from 'lucide-react'
-import useSidakStore from '../store/useSidakStore'
+import { Building2, Calendar, MapPin, User, ArrowRight, ArrowLeft, Plus, X } from 'lucide-react'
+import useTemuanStore from '../../store/useTemuanStore'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
-import toast from 'react-hot-toast'
-
-const getTodayString = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-};
 
 const RO_OPTIONS = [
     "RO 1/Medan",
@@ -58,9 +49,9 @@ const schema = yup.object().shape({
     ).min(1, 'Minimal 1 anggota tim').max(5, 'Maksimal 5 anggota tim')
 })
 
-export default function InputSidak() {
+export default function InputTemuan() {
     const navigate = useNavigate()
-    const { identity, setIdentity } = useSidakStore()
+    const { identity, setIdentity } = useTemuanStore()
 
     // Parse existing tim_kunjungan into array of objects if it exists
     const defaultTim = identity.tim_kunjungan 
@@ -73,7 +64,7 @@ export default function InputSidak() {
             nama_ro: identity.nama_ro || '',
             nama_kl: identity.nama_kl || '',
             vendor: identity.vendor || '',
-            tanggal_kunjungan: identity.tanggal_kunjungan || getTodayString(),
+            tanggal_kunjungan: identity.tanggal_kunjungan || new Date().toISOString().split('T')[0],
             tim_kunjungan: defaultTim
         }
     })
@@ -90,8 +81,7 @@ export default function InputSidak() {
             tim_kunjungan: timArray.join(', ')
         }
         setIdentity(finalData)
-        toast.success('Informasi tersimpan!')
-        navigate('/checklist')
+        navigate('/form-temuan')
     }
 
     return (
@@ -105,8 +95,8 @@ export default function InputSidak() {
                         <span className="flex items-center justify-center w-7 h-7 rounded-full bg-brand-600 text-white text-xs font-bold">1</span>
                         <span className="text-xs font-medium text-brand-600 uppercase tracking-wide">Langkah 1 dari 2</span>
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-900">Informasi Awal SIDAK</h1>
-                    <p className="text-sm text-gray-500 mt-0.5">Lengkapi identitas kantor layanan yang akan diinspeksi.</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Informasi Awal Temuan</h1>
+                    <p className="text-sm text-gray-500 mt-0.5">Lengkapi identitas kantor layanan sebelum mengisi form temuan.</p>
                 </div>
             </div>
 
@@ -148,7 +138,7 @@ export default function InputSidak() {
 
                 <div>
                     <label className="form-label mb-1.5 flex items-center gap-2">
-                        <ClipboardCheck className="w-4 h-4 text-gray-400" />
+                        <User className="w-4 h-4 text-gray-400" />
                         Vendor Pelaksana
                     </label>
                     <select
@@ -234,15 +224,9 @@ export default function InputSidak() {
                     )}
                 </div>
 
-                <div className="pt-6 flex flex-col sm:flex-row items-center gap-4 border-t border-gray-100">
-                    <div className="flex-1 w-full bg-brand-50 p-4 rounded-xl border border-brand-100 flex items-start gap-3">
-                        <ClipboardCheck className="w-5 h-5 text-brand-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-brand-700">
-                            Setelah melengkapi informasi ini, Anda akan diarahkan ke halaman pengisian checklist aspek penilaian.
-                        </p>
-                    </div>
-                    <button type="submit" className="btn-primary w-full sm:w-auto px-8 h-[52px]">
-                        Lanjut ke Pengisian Checklist
+                <div className="pt-6 flex justify-end">
+                    <button type="submit" className="btn-primary w-full sm:w-auto px-8">
+                        Lanjut ke Form Temuan
                         <ArrowRight className="w-4 h-4 ml-1" />
                     </button>
                 </div>

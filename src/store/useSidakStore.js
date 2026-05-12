@@ -6,11 +6,13 @@ const useSidakStore = create((set) => ({
         nama_ro: '',
         nama_kl: '',
         tanggal_kunjungan: '',
+        tim_kunjungan: '',
+        ttd_kepala_kl: '',
     },
     setIdentity: (data) => set({ identity: data }),
     resetIdentity: () =>
         set({
-            identity: { nama_ro: '', nama_kl: '', tanggal_kunjungan: '' },
+            identity: { nama_ro: '', nama_kl: '', tanggal_kunjungan: '', tim_kunjungan: '', ttd_kepala_kl: '' },
         }),
 }))
 

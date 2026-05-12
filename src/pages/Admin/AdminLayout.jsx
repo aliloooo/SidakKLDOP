@@ -1,14 +1,45 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { ClipboardCheck, LayoutDashboard, Layers, List, FileSpreadsheet, LogOut, Menu, X } from 'lucide-react'
+import { ClipboardCheck, LayoutDashboard, Layers, List, FileSpreadsheet, LogOut, Menu, X, Target, FileSearch } from 'lucide-react'
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 
 const navItems = [
-    { to: '/admin/aspek', label: 'Aspek', icon: Layers },
-    { to: '/admin/sub-aspek', label: 'Sub Aspek', icon: List },
-    { to: '/admin/results', label: 'Hasil SIDAK', icon: ClipboardCheck },
-    { to: '/admin/template', label: 'Template Excel', icon: FileSpreadsheet },
+    { 
+        group: 'SIDAK',
+        items: [
+            { to: '/admin/aspek', label: 'Aspek', icon: Layers },
+            { to: '/admin/sub-aspek', label: 'Sub Aspek', icon: List },
+            { to: '/admin/results', label: 'Hasil SIDAK', icon: ClipboardCheck },
+        ]
+    },
+    { 
+        group: 'Temuan Kunjungan',
+        items: [
+            { to: '/admin/indikator-temuan', label: 'Master Indikator', icon: Target },
+            { to: '/admin/results-temuan', label: 'Hasil Temuan', icon: FileSearch },
+        ]
+    },
+    { 
+        group: 'Laporan CPC CRO',
+        items: [
+            { to: '/admin/master-indikator-cpc', label: 'Master Indikator', icon: Target },
+            { to: '/admin/results-cpc', label: 'Hasil Laporan CPC', icon: FileSearch },
+        ]
+    },
+    { 
+        group: 'Laporan TID',
+        items: [
+            { to: '/admin/master-indikator-tid', label: 'Master Indikator', icon: Target },
+            { to: '/admin/results-tid', label: 'Hasil Laporan TID', icon: FileSearch },
+        ]
+    },
+    { 
+        group: 'Lainnya',
+        items: [
+            { to: '/admin/template', label: 'Template Excel', icon: FileSpreadsheet },
+        ]
+    }
 ]
 
 export default function AdminLayout() {
@@ -61,21 +92,27 @@ export default function AdminLayout() {
 
                 {/* Nav */}
                 <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-3 mb-3">Menu</p>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-3 mb-3 mt-4">Utama</p>
                     <NavLink to="/" onClick={closeSidebar} className="sidebar-link">
                         <LayoutDashboard className="w-4 h-4" />
                         Dashboard
                     </NavLink>
-                    {navItems.map(({ to, label, icon: Icon }) => (
-                        <NavLink
-                            key={to}
-                            to={to}
-                            onClick={closeSidebar}
-                            className={({ isActive }) => isActive ? 'sidebar-link-active' : 'sidebar-link'}
-                        >
-                            <Icon className="w-4 h-4" />
-                            {label}
-                        </NavLink>
+                    
+                    {navItems.map((group, idx) => (
+                        <div key={idx} className="mt-4">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-3 mb-2">{group.group}</p>
+                            {group.items.map(({ to, label, icon: Icon }) => (
+                                <NavLink
+                                    key={to}
+                                    to={to}
+                                    onClick={closeSidebar}
+                                    className={({ isActive }) => isActive ? 'sidebar-link-active' : 'sidebar-link'}
+                                >
+                                    <Icon className="w-4 h-4" />
+                                    {label}
+                                </NavLink>
+                            ))}
+                        </div>
                     ))}
                 </nav>
 
