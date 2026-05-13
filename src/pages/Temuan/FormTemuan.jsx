@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
 
 export default function FormTemuan() {
     const navigate = useNavigate()
-    const { identity, resetIdentity } = useTemuanStore()
+    const { identity, setIdentity, resetIdentity } = useTemuanStore()
 
     const [indikatorList, setIndikatorList] = useState([])
     const [details, setDetails] = useState([])
@@ -83,7 +83,8 @@ export default function FormTemuan() {
                 ...identity,
                 ttd_spv_tie: ttd1,
                 ttd_pet_bri: ttd2,
-                ttd_pet_cro: ttd3
+                ttd_pet_cro: ttd3,
+                catatan_lain: identity.catatan_lain || ''
             }
 
             await createTemuan({ identity: payloadIdentity, details })
@@ -176,6 +177,20 @@ export default function FormTemuan() {
                             </tbody>
                         </table>
                     </div>
+                </div>
+
+                {/* Catatan Lain Section */}
+                <div className="card space-y-4">
+                    <h3 className="font-bold text-gray-900 border-b pb-2 text-lg text-brand-600 flex items-center gap-2">
+                        <Save className="w-5 h-5" />
+                        Catatan Lain (Opsional)
+                    </h3>
+                    <textarea 
+                        value={identity.catatan_lain || ''}
+                        onChange={(e) => setIdentity({...identity, catatan_lain: e.target.value})}
+                        className="form-input min-h-[120px] bg-gray-50/50"
+                        placeholder="Masukkan catatan tambahan jika ada..."
+                    />
                 </div>
 
                 {/* Signatures Section */}

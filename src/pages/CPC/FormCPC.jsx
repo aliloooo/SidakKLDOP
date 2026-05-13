@@ -30,7 +30,8 @@ export default function FormCPC() {
         nama_kepala_kl: '',
         nama_perusahaan: identity.nama_vendor || '',
         nama_ro_user: '',
-        nama_dop_user: ''
+        nama_dop_user: '',
+        catatan_lain: ''
     })
 
     const sigVendor = useRef({})
@@ -173,6 +174,20 @@ export default function FormCPC() {
                             ))}
                         </tbody>
                     </table>
+                </div>
+                
+                {/* Catatan Lain Section */}
+                <div className="card space-y-4">
+                    <h3 className="font-bold text-gray-900 border-b pb-2 text-lg text-brand-600 flex items-center gap-2">
+                        <Save className="w-5 h-5" />
+                        Catatan Lain (Opsional)
+                    </h3>
+                    <textarea 
+                        value={signInfo.catatan_lain}
+                        onChange={(e) => setSignInfo({...signInfo, catatan_lain: e.target.value})}
+                        className="form-input min-h-[120px] bg-gray-50/50"
+                        placeholder="Masukkan catatan tambahan jika ada..."
+                    />
                 </div>
 
                 {/* Signatures Section */}

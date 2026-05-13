@@ -33,7 +33,8 @@ export async function createCPCReport({ identity, details }) {
             nama_ro_user: identity.nama_ro_user,
             nama_bo_user: identity.nama_bo_user,
             nama_dop_user: identity.nama_dop_user,
-            vendor_pelaksana: identity.vendor_pelaksana
+            vendor_pelaksana: identity.vendor_pelaksana,
+            catatan_lain: identity.catatan_lain
         })
         .select()
         .single();
@@ -120,7 +121,8 @@ export async function updateCPCReport(id, { identity, details }) {
             nama_ro_user: identity.nama_ro_user,
             nama_bo_user: identity.nama_bo_user,
             nama_dop_user: identity.nama_dop_user,
-            vendor_pelaksana: identity.vendor_pelaksana
+            vendor_pelaksana: identity.vendor_pelaksana,
+            catatan_lain: identity.catatan_lain
         })
         .eq('id', id);
 

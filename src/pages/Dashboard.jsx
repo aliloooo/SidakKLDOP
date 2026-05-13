@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Download, CheckCircle2, XCircle, ClipboardList, TrendingUp, AlertTriangle, Search, Eye } from 'lucide-react'
+import { Download, CheckCircle2, XCircle, ClipboardList, TrendingUp, AlertTriangle, Search, Eye, Edit3, FileDown, FileText, FileSpreadsheet } from 'lucide-react'
 import { getCombinedReports, getDashboardStats } from '../services/sidakService'
+import { exportReportToExcel } from '../services/excelExportService'
 import { getLatestTemplate } from '../services/templateService'
 import LoadingSpinner from '../components/LoadingSpinner'
 import toast from 'react-hot-toast'
@@ -227,18 +228,51 @@ export default function Dashboard() {
                                                 })}
                                             </td>
                                             <td className="table-td text-center">
-                                                <Link
-                                                    to={
-                                                        sidak.tipe_laporan?.toUpperCase().includes('TEMUAN') ? `/detail-temuan/${sidak.id}` : 
-                                                        sidak.tipe_laporan?.toUpperCase().includes('CPC') ? `/detail-cpc/${sidak.id}` : 
-                                                        sidak.tipe_laporan?.toUpperCase().includes('TID') ? `/detail-tid/${sidak.id}` : 
-                                                        `/detail-sidak/${sidak.id}`
-                                                    }
-                                                    className="inline-flex items-center gap-1.5 font-bold text-brand-600 hover:text-brand-700"
-                                                >
-                                                    <Eye className="w-3.5 h-3.5" />
-                                                    Detail
-                                                </Link>
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <Link
+                                                        to={
+                                                            sidak.tipe_laporan?.toUpperCase().includes('TEMUAN') ? `/detail-temuan/${sidak.id}` : 
+                                                            sidak.tipe_laporan?.toUpperCase().includes('CPC') ? `/detail-cpc/${sidak.id}` : 
+                                                            sidak.tipe_laporan?.toUpperCase().includes('TID') ? `/detail-tid/${sidak.id}` : 
+                                                            `/detail-sidak/${sidak.id}`
+                                                        }
+                                                        className="p-1.5 rounded-lg text-brand-600 hover:bg-brand-50 transition-colors"
+                                                        title="Lihat Detail"
+                                                    >
+                                                        <Eye className="w-4 h-4" />
+                                                    </Link>
+                                                    <Link
+                                                        to={
+                                                            (sidak.tipe_laporan?.toUpperCase().includes('TEMUAN') ? `/detail-temuan/${sidak.id}` : 
+                                                            sidak.tipe_laporan?.toUpperCase().includes('CPC') ? `/detail-cpc/${sidak.id}` : 
+                                                            sidak.tipe_laporan?.toUpperCase().includes('TID') ? `/detail-tid/${sidak.id}` : 
+                                                            `/detail-sidak/${sidak.id}`) + '?download=true'
+                                                        }
+                                                        className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                                                        title="Download PDF"
+                                                    >
+                                                        <FileText className="w-4 h-4" />
+                                                    </Link>
+                                                    <button
+                                                        onClick={() => exportReportToExcel(sidak)}
+                                                        className="p-1.5 rounded-lg text-green-600 hover:bg-green-50 transition-colors"
+                                                        title="Download Excel"
+                                                    >
+                                                        <FileSpreadsheet className="w-4 h-4" />
+                                                    </button>
+                                                    <Link
+                                                        to={
+                                                            sidak.tipe_laporan?.toUpperCase().includes('TEMUAN') ? `/edit-temuan/${sidak.id}` : 
+                                                            sidak.tipe_laporan?.toUpperCase().includes('CPC') ? `/edit-cpc/${sidak.id}` : 
+                                                            sidak.tipe_laporan?.toUpperCase().includes('TID') ? `/edit-tid/${sidak.id}` : 
+                                                            `/edit-sidak/${sidak.id}`
+                                                        }
+                                                        className="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 transition-colors"
+                                                        title="Edit Laporan"
+                                                    >
+                                                        <Edit3 className="w-4 h-4" />
+                                                    </Link>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))

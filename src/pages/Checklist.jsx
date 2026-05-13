@@ -11,7 +11,7 @@ import toast from 'react-hot-toast'
 
 export default function Checklist() {
     const navigate = useNavigate()
-    const { identity, resetIdentity } = useSidakStore()
+    const { identity, setIdentity, resetIdentity } = useSidakStore()
 
     const [aspekList, setAspekList] = useState([])
     const [subAspekList, setSubAspekList] = useState([])
@@ -257,6 +257,20 @@ export default function Checklist() {
                         </div>
                     )
                 })}
+                
+                {/* Catatan Lain Section */}
+                <div className="card space-y-4">
+                    <h3 className="font-bold text-gray-900 border-b pb-2 text-lg text-brand-600 flex items-center gap-2">
+                        <Save className="w-5 h-5" />
+                        Catatan Lain (Opsional)
+                    </h3>
+                    <textarea 
+                        value={identity.catatan_lain || ''}
+                        onChange={(e) => setIdentity({ ...identity, catatan_lain: e.target.value })}
+                        className="form-input min-h-[120px] bg-gray-50/50"
+                        placeholder="Masukkan catatan tambahan jika ada..."
+                    />
+                </div>
 
                 {/* Signature Pad Section */}
                 <div className="card space-y-4">

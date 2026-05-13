@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Save, User, Building2, MapPin, Calendar, ClipboardList } from 'lucide-react'
 import { supabase } from '../../services/supabaseClient'
 import LoadingSpinner from '../../components/LoadingSpinner'
@@ -8,6 +8,10 @@ import toast from 'react-hot-toast'
 export default function EditTIDPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const location = useLocation()
+    const isAdminRoute = location.pathname.startsWith('/admin')
+    const backPath = isAdminRoute ? '/admin/results-tid' : '/'
+
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
     const [report, setReport] = useState(null)
@@ -56,7 +60,7 @@ export default function EditTIDPage() {
             setDetails(mappedDetails)
         } catch (err) {
             toast.error('Gagal memuat laporan: ' + err.message)
-            navigate('/admin/results-tid')
+            navigate(backPath)
         } finally {
             setLoading(false)
         }
@@ -135,7 +139,7 @@ export default function EditTIDPage() {
             if (detailError) throw detailError
 
             toast.success('Laporan berhasil diperbarui')
-            navigate('/admin/results-tid')
+            navigate(backPath)
         } catch (err) {
             toast.error('Gagal memperbarui: ' + err.message)
         } finally {
@@ -148,7 +152,7 @@ export default function EditTIDPage() {
     return (
         <div className="max-w-5xl mx-auto space-y-6 pb-20">
             <div className="flex items-center gap-4">
-                <button onClick={() => navigate('/admin/results-tid')} className="btn-secondary px-3 py-2">
+                <button onClick={() => navigate(backPath)} className="btn-secondary px-3 py-2">
                     <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div>
@@ -279,7 +283,7 @@ export default function EditTIDPage() {
                 </div>
 
                 <div className="flex justify-end gap-3">
-                    <button type="button" onClick={() => navigate('/admin/results-tid')} className="btn-secondary">Batal</button>
+                    <button type="button" onClick={() => navigate(backPath)} className="btn-secondary">Batal</button>
                     <button type="submit" disabled={submitting} className="btn-primary px-8 h-12">
                         {submitting ? 'Menyimpan...' : (
                             <>

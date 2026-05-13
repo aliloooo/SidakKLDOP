@@ -1,19 +1,24 @@
-import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Building2, Calendar, User, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
+import { Building2, Calendar, User, ArrowLeft, CheckCircle2, AlertCircle, Download } from 'lucide-react'
 import { getSidakById } from '../services/sidakService'
 import { getAspek } from '../services/aspekService'
 import DigitalStamp from '../components/DigitalStamp'
 import { calcNilaiAspek, calcTotalNilai, determineStatus } from '../utils/calculateScore'
 import LoadingSpinner from '../components/LoadingSpinner'
 import toast from 'react-hot-toast'
+import { useReactToPrint } from 'react-to-print'
+import html2pdf from 'html2pdf.js'
 
 export default function DetailSidakPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const location = useLocation()
+    const printRef = useRef()
     const [data, setData] = useState(null)
     const [aspekList, setAspekList] = useState([])
     const [loading, setLoading] = useState(true)
+    const [isDownloading, setIsDownloading] = useState(false)
 
     useEffect(() => {
         const loadDetail = async () => {
@@ -39,6 +44,53 @@ export default function DetailSidakPage() {
 
     const totalNilai = calcTotalNilai(data.sidak_detail || [])
     const status = determineStatus(totalNilai)
+
+    const handlePrint = useReactToPrint({
+        content: () => printRef.current,
+        documentTitle: `Laporan_SIDAK_${id?.substring(0, 8)}`,
+        onAfterPrint: () => {
+            if (location.search.includes('download=true')) {
+                navigate(location.pathname, { replace: true })
+            }
+        }
+    })
+
+    const handleDownloadPDF = async () => {
+        setIsDownloading(true);
+        const element = printRef.current;
+        const opt = {
+            margin: [10, 10],
+            filename: `Laporan_SIDAK_${data?.nama_kl || id?.substring(0, 8)}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        const toastId = toast.loading('Menyiapkan PDF...');
+        try {
+            // Wait a bit for the isDownloading state to render the print-only elements
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await html2pdf().set(opt).from(element).save();
+            toast.success('PDF berhasil diunduh', { id: toastId });
+            if (location.search.includes('download=true')) {
+                navigate(location.pathname, { replace: true });
+            }
+        } catch (err) {
+            toast.error('Gagal mengunduh PDF', { id: toastId });
+            console.error(err);
+        } finally {
+            setIsDownloading(false);
+        }
+    }
+
+    useEffect(() => {
+        if (!loading && data && location.search.includes('download=true')) {
+            const timer = setTimeout(() => {
+                handleDownloadPDF();
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [loading, data, location.search]);
 
     return (
         <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 relative">
@@ -68,10 +120,37 @@ export default function DetailSidakPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Detail Hasil SIDAK</h1>
                     <p className="text-sm text-gray-500">Hasil penilaian kantor layanan {data.nama_kl}</p>
                 </div>
+                <div className="ml-auto flex items-center gap-2">
+                    <button onClick={handleDownloadPDF} className="btn-primary px-6 h-11 bg-red-600 hover:bg-red-700 border-red-600">
+                        <Download className="w-4 h-4" />
+                        Download PDF
+                    </button>
+                    <button onClick={handlePrint} className="btn-secondary px-6 h-11">
+                        Cetak Laporan
+                    </button>
+                </div>
             </div>
 
-            {/* Info Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div ref={printRef} className={`print:p-0 print:bg-transparent space-y-6 relative ${isDownloading ? 'bg-white p-8' : ''}`}>
+                {/* Digital Stamp (Top Right) for Print/Download */}
+                <div className={`absolute top-0 right-0 z-20 ${isDownloading ? 'block' : 'hidden print:block'}`}>
+                    <DigitalStamp 
+                        vendor={data.nama_kl} 
+                        date={data.tanggal_kunjungan} 
+                        reportId={data.id?.substring(0, 8)} 
+                    />
+                </div>
+                
+                {/* Print Header (Only visible when printing/downloading) */}
+                <div className={`${isDownloading ? 'block' : 'hidden print:block'} border-b-2 border-gray-900 pb-8 mb-8`}>
+                    <div className="space-y-1">
+                        <h2 className="text-2xl font-black text-gray-900 tracking-tighter uppercase">Laporan Checklist SIDAK</h2>
+                        <p className="text-xs font-bold text-brand-600 uppercase tracking-widest">Sidak Kantor Layanan - DOP</p>
+                    </div>
+                </div>
+
+                {/* Info Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="card p-4 flex items-center gap-4 bg-white border-gray-100 shadow-sm">
                     <div className="w-10 h-10 rounded-full bg-brand-50 flex items-center justify-center flex-shrink-0">
                         <Building2 className="w-5 h-5 text-brand-600" />
@@ -158,6 +237,18 @@ export default function DetailSidakPage() {
                     )
                 })}
             </div>
+            
+            {data.catatan_lain && (
+                <div className="mb-12 p-6 bg-brand-50/50 rounded-xl border-2 border-brand-100 print:bg-white print:border-gray-200">
+                    <div className="flex items-center gap-2 mb-3">
+                        <div className="w-1.5 h-4 bg-brand-600 rounded-full"></div>
+                        <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest">Catatan Lain / Rekomendasi</p>
+                    </div>
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed font-medium">
+                        {data.catatan_lain}
+                    </p>
+                </div>
+            )}
 
             {/* Signature Pad Section */}
             <div className="card p-8 bg-white border-gray-200 shadow-sm flex flex-col items-center gap-6">
@@ -175,6 +266,7 @@ export default function DetailSidakPage() {
                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Kepala Kantor Layanan</p>
                     </div>
                 </div>
+            </div>
             </div>
 
             {/* Note */}

@@ -1,17 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Download } from 'lucide-react'
 import { getTIDReportById } from '../../services/tidService'
 import DigitalStamp from '../../components/DigitalStamp'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import toast from 'react-hot-toast'
 import { useReactToPrint } from 'react-to-print'
+import html2pdf from 'html2pdf.js'
 
 export default function DetailTIDPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const location = useLocation()
     const [report, setReport] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [isDownloading, setIsDownloading] = useState(false)
     const printRef = useRef()
 
     useEffect(() => {
@@ -33,7 +36,46 @@ export default function DetailTIDPage() {
     const handlePrint = useReactToPrint({
         content: () => printRef.current,
         documentTitle: `Laporan_TID_${id?.substring(0, 8)}`,
+        onAfterPrint: () => {
+            if (location.search.includes('download=true')) {
+                navigate(location.pathname, { replace: true })
+            }
+        }
     })
+
+    const handleDownloadPDF = () => {
+        setIsDownloading(true);
+        const element = printRef.current;
+        const opt = {
+            margin: [10, 10],
+            filename: `Laporan_TID_${report?.nama_vendor || id?.substring(0, 8)}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        const toastId = toast.loading('Menyiapkan PDF...');
+        html2pdf().set(opt).from(element).save().then(() => {
+            toast.success('PDF berhasil diunduh', { id: toastId });
+            if (location.search.includes('download=true')) {
+                navigate(location.pathname, { replace: true })
+            }
+        }).catch(err => {
+            toast.error('Gagal mengunduh PDF', { id: toastId });
+            console.error(err);
+        }).finally(() => {
+            setIsDownloading(false);
+        });
+    }
+
+    useEffect(() => {
+        if (!loading && report && location.search.includes('download=true')) {
+            const timer = setTimeout(() => {
+                handleDownloadPDF();
+            }, 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [loading, report, location.search]);
 
     if (loading) return <div className="py-20"><LoadingSpinner /></div>
     if (!report) return null
@@ -50,14 +92,19 @@ export default function DetailTIDPage() {
                         <p className="text-xs text-gray-500 font-medium">ID: {report.id.substring(0, 8)}</p>
                     </div>
                 </div>
-                <button onClick={handlePrint} className="btn-primary px-6 h-11">
-                    <Download className="w-4 h-4" />
-                    Cetak Laporan
-                </button>
+                <div className="flex items-center gap-2">
+                    <button onClick={handleDownloadPDF} className="btn-primary px-6 h-11 bg-red-600 hover:bg-red-700 border-red-600">
+                        <Download className="w-4 h-4" />
+                        Download PDF
+                    </button>
+                    <button onClick={handlePrint} className="btn-secondary px-6 h-11">
+                        Cetak Laporan
+                    </button>
+                </div>
             </div>
 
-            <div ref={printRef} className="bg-white shadow-xl rounded-2xl p-8 md:p-12 border border-gray-100 print:shadow-none print:border-0 print:p-0 relative overflow-hidden">
-                <div className="absolute top-8 right-8 z-20 hidden md:block print:block">
+            <div ref={printRef} className={`bg-white shadow-xl rounded-2xl p-8 md:p-12 border border-gray-100 print:shadow-none print:border-0 print:p-0 relative overflow-hidden ${isDownloading ? 'p-12 border-0 shadow-none' : ''}`}>
+                <div className={`absolute top-8 right-8 z-20 ${isDownloading ? 'block' : 'hidden md:block print:block'}`}>
                     <DigitalStamp vendor={report.nama_vendor} date={report.tanggal_kunjungan} reportId={report.id?.substring(0, 8)} />
                 </div>
 

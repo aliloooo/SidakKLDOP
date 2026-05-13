@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Save, Eraser, User, Building2, MapPin, Calendar, ClipboardList } from 'lucide-react'
 import SignatureCanvas from 'react-signature-canvas'
 import { getCPCReportById, updateCPCReport } from '../../services/cpcService'
@@ -31,6 +31,10 @@ const RO_OPTIONS = [
 export default function EditCPCPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const location = useLocation()
+    const isAdminRoute = location.pathname.startsWith('/admin')
+    const backPath = isAdminRoute ? '/admin/results-cpc' : '/'
+    
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
     
@@ -48,7 +52,8 @@ export default function EditCPCPage() {
         nama_dop_user: '',
         ttd_kepala_kl: '',
         ttd_ro: '',
-        ttd_dop: ''
+        ttd_dop: '',
+        catatan_lain: ''
     })
 
     const [details, setDetails] = useState([])
@@ -77,12 +82,13 @@ export default function EditCPCPage() {
                 nama_dop_user: data.nama_dop_user || '',
                 ttd_kepala_kl: data.ttd_kepala_kl,
                 ttd_ro: data.ttd_ro || '',
-                ttd_dop: data.ttd_dop || ''
+                ttd_dop: data.ttd_dop || '',
+                catatan_lain: data.catatan_lain || ''
             })
             setDetails(data.laporan_cpc_detail || [])
         } catch (err) {
             toast.error('Gagal memuat data: ' + err.message)
-            navigate('/admin/results-cpc')
+            navigate(backPath)
         } finally {
             setLoading(false)
         }
@@ -112,7 +118,7 @@ export default function EditCPCPage() {
 
             await updateCPCReport(id, { identity: payloadIdentity, details })
             toast.success('Laporan berhasil diperbarui!')
-            navigate('/admin/results-cpc')
+            navigate(backPath)
         } catch (err) {
             toast.error('Gagal memperbarui: ' + err.message)
         } finally {
@@ -125,7 +131,7 @@ export default function EditCPCPage() {
     return (
         <div className="max-w-5xl mx-auto space-y-6">
             <div className="flex items-center gap-4">
-                <button onClick={() => navigate('/admin/results-cpc')} className="btn-secondary px-3 py-2">
+                <button onClick={() => navigate(backPath)} className="btn-secondary px-3 py-2">
                     <ArrowLeft className="w-4 h-4" />
                 </button>
                 <h1 className="text-2xl font-bold text-gray-900">Edit Laporan CPC</h1>
@@ -246,6 +252,20 @@ export default function EditCPCPage() {
                     </table>
                 </div>
 
+                {/* Catatan Lain Section */}
+                <div className="card space-y-4">
+                    <h3 className="font-bold text-gray-900 border-b pb-2 text-lg text-brand-600 flex items-center gap-2">
+                        <Save className="w-5 h-5" />
+                        Catatan Lain (Opsional)
+                    </h3>
+                    <textarea 
+                        value={identity.catatan_lain}
+                        onChange={(e) => setIdentity({...identity, catatan_lain: e.target.value})}
+                        className="form-input min-h-[120px] bg-gray-50/50"
+                        placeholder="Masukkan catatan tambahan jika ada..."
+                    />
+                </div>
+
                 {/* Signatures Section */}
                 <div className="card space-y-8">
                     <h3 className="font-bold text-gray-900 border-b pb-2 text-lg">Edit Otorisasi & Tanda Tangan</h3>
@@ -326,7 +346,7 @@ export default function EditCPCPage() {
                 </div>
 
                 <div className="flex justify-end gap-3 pb-12">
-                    <button type="button" onClick={() => navigate('/admin/results-cpc')} className="btn-secondary">
+                    <button type="button" onClick={() => navigate(backPath)} className="btn-secondary">
                         Batal
                     </button>
                     <button type="submit" disabled={submitting} className="btn-success px-12 h-[52px]">

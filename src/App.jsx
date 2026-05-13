@@ -102,14 +102,17 @@ export default function App() {
           <Route path="/input-temuan" element={<PublicLayout><InputTemuan /></PublicLayout>} />
           <Route path="/form-temuan" element={<PublicLayout><FormTemuan /></PublicLayout>} />
           <Route path="/detail-temuan/:id" element={<PublicLayout><DetailTemuanPage /></PublicLayout>} />
+          <Route path="/edit-temuan/:id" element={<PublicLayout><EditTemuanPage /></PublicLayout>} />
           
           <Route path="/input-cpc" element={<PublicLayout><InputCPCInfo /></PublicLayout>} />
           <Route path="/form-cpc" element={<PublicLayout><FormCPC /></PublicLayout>} />
           <Route path="/detail-cpc/:id" element={<PublicLayout><DetailCPCPage /></PublicLayout>} />
+          <Route path="/edit-cpc/:id" element={<PublicLayout><EditCPCPage /></PublicLayout>} />
 
           <Route path="/input-tid" element={<PublicLayout><InputTIDInfo /></PublicLayout>} />
           <Route path="/form-tid" element={<PublicLayout><FormTID /></PublicLayout>} />
           <Route path="/detail-tid/:id" element={<PublicLayout><DetailTIDPage /></PublicLayout>} />
+          <Route path="/edit-tid/:id" element={<PublicLayout><EditTIDPage /></PublicLayout>} />
 
           {/* Admin login (no guard needed) */}
           <Route path="/admin/login" element={<AdminLogin />} />

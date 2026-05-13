@@ -1,17 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Download, Building2, MapPin, Calendar, ClipboardList, User } from 'lucide-react'
 import { getCPCReportById } from '../../services/cpcService'
 import DigitalStamp from '../../components/DigitalStamp'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import toast from 'react-hot-toast'
 import { useReactToPrint } from 'react-to-print'
+import html2pdf from 'html2pdf.js'
 
 export default function DetailCPCPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const location = useLocation()
     const [report, setReport] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [isDownloading, setIsDownloading] = useState(false)
     const printRef = useRef()
 
     useEffect(() => {
@@ -33,7 +36,43 @@ export default function DetailCPCPage() {
     const handlePrint = useReactToPrint({
         content: () => printRef.current,
         documentTitle: `Laporan_CPC_${id?.substring(0, 8)}`,
+        onAfterPrint: () => {
+            if (location.search.includes('download=true')) {
+                navigate(location.pathname, { replace: true })
+            }
+        }
     })
+
+    const handleDownloadPDF = () => {
+        const element = printRef.current;
+        const opt = {
+            margin: [10, 10],
+            filename: `Laporan_CPC_${report?.nama_vendor || id?.substring(0, 8)}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        const toastId = toast.loading('Menyiapkan PDF...');
+        html2pdf().set(opt).from(element).save().then(() => {
+            toast.success('PDF berhasil diunduh', { id: toastId });
+            if (location.search.includes('download=true')) {
+                navigate(location.pathname, { replace: true })
+            }
+        }).catch(err => {
+            toast.error('Gagal mengunduh PDF', { id: toastId });
+            console.error(err);
+        });
+    }
+
+    useEffect(() => {
+        if (!loading && report && location.search.includes('download=true')) {
+            const timer = setTimeout(() => {
+                handleDownloadPDF();
+            }, 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [loading, report, location.search]);
 
     if (loading) return <div className="py-20"><LoadingSpinner /></div>
     if (!report) return null
@@ -50,11 +89,20 @@ export default function DetailCPCPage() {
                         <p className="text-xs text-gray-500 font-medium">ID: {report.id.substring(0, 8)}</p>
                     </div>
                 </div>
+                <div className="flex items-center gap-2">
+                    <button onClick={handleDownloadPDF} className="btn-primary px-6 h-11 bg-red-600 hover:bg-red-700 border-red-600">
+                        <Download className="w-4 h-4" />
+                        Download PDF
+                    </button>
+                    <button onClick={handlePrint} className="btn-secondary px-6 h-11">
+                        Cetak Laporan
+                    </button>
+                </div>
             </div>
 
-            <div ref={printRef} className="bg-white shadow-xl rounded-2xl p-8 md:p-12 border border-gray-100 print:shadow-none print:border-0 print:p-0 relative overflow-hidden">
+            <div ref={printRef} className={`bg-white shadow-xl rounded-2xl p-8 md:p-12 border border-gray-100 print:shadow-none print:border-0 print:p-0 relative overflow-hidden ${isDownloading ? 'p-12 border-0 shadow-none' : ''}`}>
                 {/* Digital Stamp (Top Right) */}
-                <div className="absolute top-8 right-8 z-20 hidden md:block print:block">
+                <div className={`absolute top-8 right-8 z-20 ${isDownloading ? 'block' : 'hidden md:block print:block'}`}>
                     <DigitalStamp
                         vendor={report.nama_vendor}
                         date={report.tanggal_kunjungan}
@@ -140,6 +188,18 @@ export default function DetailCPCPage() {
                         </tbody>
                     </table>
                 </div>
+
+                {report.catatan_lain && (
+                    <div className="mb-12 p-6 bg-brand-50/50 rounded-xl border-2 border-brand-100 print:bg-white print:border-gray-200">
+                        <div className="flex items-center gap-2 mb-3">
+                            <div className="w-1.5 h-4 bg-brand-600 rounded-full"></div>
+                            <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest">Catatan Lain / Rekomendasi</p>
+                        </div>
+                        <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed font-medium">
+                            {report.catatan_lain}
+                        </p>
+                    </div>
+                )}
 
                 {/* Signatures */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12 pt-8 border-t">

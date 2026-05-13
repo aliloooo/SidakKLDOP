@@ -115,6 +115,7 @@ export async function updateSidak(id, { identity, details }) {
             ttd_kepala_kl: ttd_kepala_kl,
             total_nilai,
             status,
+            catatan_lain: identity.catatan_lain
         })
         .eq('id', id)
         .select()
@@ -170,6 +171,7 @@ export async function createSidak({ identity, details }) {
             ttd_kepala_kl: ttd_url,
             total_nilai,
             status,
+            catatan_lain: identity.catatan_lain
         }])
         .select()
         .single()

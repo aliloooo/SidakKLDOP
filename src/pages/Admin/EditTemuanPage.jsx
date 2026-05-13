@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { ArrowLeft, Save, Eraser, AlertCircle } from 'lucide-react'
 import SignatureCanvas from 'react-signature-canvas'
 import { getTemuanById, updateTemuan } from '../../services/temuanService'
@@ -9,6 +9,9 @@ import toast from 'react-hot-toast'
 export default function EditTemuanPage() {
     const { id } = useParams()
     const navigate = useNavigate()
+    const location = useLocation()
+    const isAdminRoute = location.pathname.startsWith('/admin')
+    const backPath = isAdminRoute ? '/admin/results-temuan' : '/'
     
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
@@ -42,7 +45,8 @@ export default function EditTemuanPage() {
                 tim_kunjungan: data.tim_kunjungan,
                 ttd_spv_tie: data.ttd_spv_tie,
                 ttd_pet_bri: data.ttd_pet_bri,
-                ttd_pet_cro: data.ttd_pet_cro
+                ttd_pet_cro: data.ttd_pet_cro,
+                catatan_lain: data.catatan_lain || ''
             })
             setDetails(data.temuan_detail.map(d => ({
                 id: d.id, // Detail ID for updating
@@ -53,7 +57,7 @@ export default function EditTemuanPage() {
             })))
         } catch (err) {
             toast.error('Gagal memuat data: ' + err.message)
-            navigate('/admin/results-temuan')
+            navigate(backPath)
         } finally {
             setLoading(false)
         }
@@ -86,7 +90,7 @@ export default function EditTemuanPage() {
 
             await updateTemuan(id, { identity: payloadIdentity, details })
             toast.success('Laporan Temuan berhasil diperbarui!')
-            navigate('/admin/results-temuan')
+            navigate(backPath)
         } catch (err) {
             console.error('Update Error:', err)
             toast.error('Gagal memperbarui: ' + (err.message || 'Terjadi kesalahan sistem'))
@@ -101,7 +105,7 @@ export default function EditTemuanPage() {
         <div className="max-w-6xl mx-auto space-y-6">
             {/* Header */}
             <div className="flex items-start gap-4">
-                <button onClick={() => navigate('/admin/results-temuan')} className="btn-secondary mt-1">
+                <button onClick={() => navigate(backPath)} className="btn-secondary mt-1">
                     <ArrowLeft className="w-4 h-4" />
                 </button>
                 <div className="flex-1">
@@ -194,6 +198,20 @@ export default function EditTemuanPage() {
                             </tbody>
                         </table>
                     </div>
+                </div>
+
+                {/* Catatan Lain Section */}
+                <div className="card space-y-4">
+                    <h3 className="font-bold text-gray-900 border-b pb-2 text-lg text-brand-600 flex items-center gap-2">
+                        <Save className="w-5 h-5" />
+                        Catatan Lain (Opsional)
+                    </h3>
+                    <textarea 
+                        value={identity.catatan_lain || ''}
+                        onChange={(e) => setIdentity({...identity, catatan_lain: e.target.value})}
+                        className="form-input min-h-[120px] bg-gray-50/50"
+                        placeholder="Masukkan catatan tambahan jika ada..."
+                    />
                 </div>
 
                 {/* Signatures Section */}
@@ -306,7 +324,7 @@ export default function EditTemuanPage() {
 
                 {/* Submit Button */}
                 <div className="flex justify-end gap-3 pb-12">
-                    <button type="button" onClick={() => navigate('/admin/results-temuan')} className="btn-secondary">
+                    <button type="button" onClick={() => navigate(backPath)} className="btn-secondary">
                         Batal
                     </button>
                     <button type="submit" disabled={submitting} className="btn-success px-10">

@@ -68,7 +68,8 @@ export async function createTemuan({ identity, details }) {
             tim_kunjungan: identity.tim_kunjungan,
             ttd_spv_tie: ttd1,
             ttd_pet_bri: ttd2,
-            ttd_pet_cro: ttd3
+            ttd_pet_cro: ttd3,
+            catatan_lain: identity.catatan_lain
         }])
         .select()
         .single()
@@ -159,7 +160,8 @@ export async function updateTemuan(id, { identity, details }) {
             tim_kunjungan: identity.tim_kunjungan,
             ttd_spv_tie: ttd1,
             ttd_pet_bri: ttd2,
-            ttd_pet_cro: ttd3
+            ttd_pet_cro: ttd3,
+            catatan_lain: identity.catatan_lain
         })
         .eq('id', id)
 
